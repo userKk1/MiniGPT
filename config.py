@@ -28,12 +28,16 @@ for _d in [DATA_RAW_DIR, DATA_PROCESSED_DIR, CHECKPOINTS_DIR, LOGS_DIR, FIGURES_
 # ---------------------------------------------------------------------------
 # Data
 # ---------------------------------------------------------------------------
+from dataclasses import dataclass
+
+
 @dataclass
 class DataConfig:
-    dataset_name: str = "bigcode/the-stack-smol"
-    dataset_subset: str = "data/python"   # language subset within the dataset
-    max_corpus_mb: int = 100              # cap on how much raw text we pull
-    max_file_chars: int = 20_000          # drop files longer than this (outliers)
+    dataset_name: str = "codeparrot/codeparrot-clean"
+
+    max_corpus_mb: int = 100
+    max_file_chars: int = 20_000
+
     train_split: float = 0.9
     seed: int = 1337
  
