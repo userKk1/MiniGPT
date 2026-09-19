@@ -35,7 +35,7 @@ from dataclasses import dataclass
 class DataConfig:
     dataset_name: str = "codeparrot/codeparrot-clean"
 
-    max_corpus_mb: int = 100
+    max_corpus_mb: int = 10
     max_file_chars: int = 20_000
 
     train_split: float = 0.9
