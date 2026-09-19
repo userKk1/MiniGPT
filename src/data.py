@@ -5,7 +5,7 @@ ds = load_dataset(
     cfg.data.dataset_name,
     split="train",
     streaming=True,
-)
+).shuffle(seed=cfg.data.seed, buffer_size=10_000)
 
 samples = []
 total_bytes = 0
