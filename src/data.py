@@ -19,6 +19,8 @@ for example in ds:
         continue
     if len(content) > cfg.data.max_file_chars:
         continue
+    if not content.isascii():          
+        continue
 
     samples.append(content)
     total_bytes += len(content.encode("utf-8"))

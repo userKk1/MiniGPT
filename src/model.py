@@ -126,9 +126,13 @@ class GPT(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None, top_p=None):
         """Autoregressively extend idx by max_new_tokens tokens. Used by
-        generate.py and for periodic training-time sanity checks."""
+        generate.py and for periodic training-time sanity checks.
+
+        top_k and top_p are mutually exclusive -- if both are given, top_k
+        is applied and top_p is ignored.
+        """
         self.eval()
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -self.block_size:]
@@ -138,6 +142,20 @@ class GPT(nn.Module):
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[:, [-1]]] = float("-inf")
+            elif top_p is not None:
+                # Nucleus sampling: keep the smallest set of tokens whose
+                # cumulative probability exceeds top_p, mask the rest.
+                sorted_logits, sorted_idx = torch.sort(logits, descending=True, dim=-1)
+                sorted_probs = F.softmax(sorted_logits, dim=-1)
+                cum_probs = torch.cumsum(sorted_probs, dim=-1)
+
+                # Shift right so we always keep at least the top token.
+                sorted_mask = cum_probs > top_p
+                sorted_mask[:, 1:] = sorted_mask[:, :-1].clone()
+                sorted_mask[:, 0] = False
+
+                mask = torch.zeros_like(sorted_mask).scatter_(1, sorted_idx, sorted_mask)
+                logits = logits.masked_fill(mask, float("-inf"))
 
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
@@ -147,6 +165,7 @@ class GPT(nn.Module):
 
     def num_params(self):
         return sum(p.numel() for p in self.parameters())
+
 
 
 if __name__ == "__main__":
