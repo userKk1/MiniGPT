@@ -170,21 +170,42 @@ class GPT(nn.Module):
 
 if __name__ == "__main__":
     # Quick smoke test: python src/model.py
-    import json
 
+    from tokenizers import Tokenizer
     from config import DATA_PROCESSED_DIR
 
-    vocab_path = DATA_PROCESSED_DIR / "vocab.json"
-    if vocab_path.exists():
-        vocab_size = json.loads(vocab_path.read_text())["vocab_size"]
+    tokenizer_path = DATA_PROCESSED_DIR / "tokenizer.json"
+
+    if tokenizer_path.exists():
+        tokenizer = Tokenizer.from_file(str(tokenizer_path))
+        vocab_size = tokenizer.get_vocab_size()
     else:
-        vocab_size = 100
-        print("vocab.json not found -- using dummy vocab_size=100 for smoke test")
+        vocab_size = 1000
+        print(
+            "tokenizer.json not found -- "
+            "using dummy vocab_size=1000 for smoke test"
+        )
 
     model = GPT(vocab_size)
+
+    print(f"Vocabulary size: {vocab_size}")
     print(f"Parameters: {model.num_params():,}")
 
-    dummy_idx = torch.randint(0, vocab_size, (2, cfg.model.block_size))
-    dummy_targets = torch.randint(0, vocab_size, (2, cfg.model.block_size))
+    dummy_idx = torch.randint(
+        0,
+        vocab_size,
+        (2, cfg.model.block_size)
+    )
+
+    dummy_targets = torch.randint(
+        0,
+        vocab_size,
+        (2, cfg.model.block_size)
+    )
+
     logits, loss = model(dummy_idx, dummy_targets)
-    print(f"logits shape: {logits.shape}, loss: {loss.item():.4f}")
+
+    print(
+        f"logits shape: {logits.shape}, "
+        f"loss: {loss.item():.4f}"
+    )

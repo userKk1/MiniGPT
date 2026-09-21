@@ -7,15 +7,31 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+from tokenizers import Tokenizer
+
 from config import cfg, DATA_PROCESSED_DIR, CHECKPOINTS_DIR, LOGS_DIR, FIGURES_DIR
 from src.model import GPT
 
 
 def load_data():
-    vocab = json.loads((DATA_PROCESSED_DIR / "vocab.json").read_text())
-    vocab_size = vocab["vocab_size"]
-    train_data = np.memmap(DATA_PROCESSED_DIR / "train.bin", dtype=np.uint16, mode="r")
-    val_data = np.memmap(DATA_PROCESSED_DIR / "val.bin", dtype=np.uint16, mode="r")
+    tokenizer = Tokenizer.from_file(
+        str(DATA_PROCESSED_DIR / "tokenizer.json")
+    )
+
+    vocab_size = tokenizer.get_vocab_size()
+
+    train_data = np.memmap(
+        DATA_PROCESSED_DIR / "train.bin",
+        dtype=np.uint16,
+        mode="r"
+    )
+
+    val_data = np.memmap(
+        DATA_PROCESSED_DIR / "val.bin",
+        dtype=np.uint16,
+        mode="r"
+    )
+
     return train_data, val_data, vocab_size
 
 

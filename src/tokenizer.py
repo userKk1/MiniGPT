@@ -1,43 +1,101 @@
 import sys
-sys.path.append('.')
+import json
+
+sys.path.append(".")
+
+import numpy as np
+
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.trainers import BpeTrainer
+from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPre
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 
 from config import cfg, DATA_RAW_DIR, DATA_PROCESSED_DIR
-import json
-import numpy as np
 
 corpus_path = DATA_RAW_DIR / 'corpus_raw.txt'
 text = corpus_path.read_text(encoding='utf-8')
 print(f'Corpus length: {len(text):,} characters')
 
-chars = sorted(set(text))
-vocab_size = len(chars)
-print(f'Vocab size: {vocab_size}')
+VOCAB_SIZE=1000
 
-stoi={ch:i for i,ch in enumerate(chars)}
-itos={i:ch for i,ch in enumerate(chars)}
+tokenizer = Tokenizer(BPE(unk_token="<UNK>"))
 
-def encode(s:str)->list[int]:
-    return [stoi[c] for c in s]
+tokenizer.pre_tokenizer = ByteLevelPre(add_prefix_space=False)
 
-def decode(ids:list[int])->str:
-    return ''.join(itos[i] for i in ids)
+tokenizer.decoder = ByteLevelDecoder()
 
-ids = encode(text)
-data_arr = np.array(ids, dtype=np.uint16)  # fine as long as vocab_size < 65536
+trainer = BpeTrainer(
+    vocab_size=VOCAB_SIZE,
+    special_tokens=["<UNK>"],
+)
+
+print("Training BPE tokenizer...")
+
+tokenizer.train(
+    [str(corpus_path)],
+    trainer
+)
+
+vocab_size = tokenizer.get_vocab_size()
+
+print(f"BPE vocab size: {vocab_size:,}")
+
+print("\nEncoding entire corpus...")
+
+encoded = tokenizer.encode(text)
+
+ids = encoded.ids
+
+print(f"Total BPE tokens: {len(ids):,}")
+
+data_arr = np.array(ids, dtype=np.uint16)
+
+# uint16 supports token IDs from 0 to 65,535.
+# Our vocabulary (1000) is far below that limit.
 
 n = len(data_arr)
 
 split_idx = int(n * cfg.data.train_split)
+
 train_ids = data_arr[:split_idx]
 val_ids = data_arr[split_idx:]
 
-print(f'train: {len(train_ids):,} tokens')
-print(f'val:   {len(val_ids):,} tokens')
+print(f"train: {len(train_ids):,} tokens")
+print(f"val:   {len(val_ids):,} tokens")
 
-train_ids.tofile(DATA_PROCESSED_DIR / 'train.bin')
-val_ids.tofile(DATA_PROCESSED_DIR / 'val.bin')
+train_path = DATA_PROCESSED_DIR / "train.bin"
+val_path = DATA_PROCESSED_DIR / "val.bin"
 
-with open(DATA_PROCESSED_DIR / 'vocab.json', 'w', encoding='utf-8') as f:
-    json.dump({'stoi': stoi, 'itos': itos, 'vocab_size': vocab_size}, f,ensure_ascii=False, indent=2)
+train_ids.tofile(train_path)
+val_ids.tofile(val_path)
 
-print(f'Saved to {DATA_PROCESSED_DIR}')
+tokenizer_path = DATA_PROCESSED_DIR / "tokenizer.json"
+
+tokenizer.save(str(tokenizer_path))
+
+
+metadata = {
+    "vocab_size": vocab_size,
+    "tokenizer_type": "BPE",
+    "pre_tokenizer": "ByteLevel",
+    "add_prefix_space": False,
+}
+
+with open(
+    DATA_PROCESSED_DIR / "tokenizer_config.json",
+    "w",
+    encoding="utf-8"
+) as f:
+    json.dump(
+        metadata,
+        f,
+        ensure_ascii=False,
+        indent=2
+    )
+
+
+print("\nDone.")
+print(f"Saved train data: {train_path}")
+print(f"Saved val data:   {val_path}")
+print(f"Saved tokenizer:  {tokenizer_path}")
