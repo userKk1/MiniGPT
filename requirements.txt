@@ -1,2 +1,5 @@
 datasets
 torch
+numpy
+matplotlib
+pandas
