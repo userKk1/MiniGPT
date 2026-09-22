@@ -126,7 +126,7 @@ class GPT(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None, top_p=None):
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None, top_p=None, repetition_penalty=1.0):
         """Autoregressively extend idx by max_new_tokens tokens. Used by
         generate.py and for periodic training-time sanity checks.
 
@@ -138,6 +138,10 @@ class GPT(nn.Module):
             idx_cond = idx[:, -self.block_size:]
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] / temperature
+
+            if repetition_penalty != 1.0:
+                for token_id in set(idx[0].tolist()):
+                    logits[:, token_id] /= repetition_penalty   # penalize tokens already seen
 
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
