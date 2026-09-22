@@ -138,11 +138,14 @@ class GPT(nn.Module):
             idx_cond = idx[:, -self.block_size:]
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :] / temperature
-
+ 
             if repetition_penalty != 1.0:
                 for token_id in set(idx[0].tolist()):
-                    logits[:, token_id] /= repetition_penalty   # penalize tokens already seen
-
+                    logit = logits[:, token_id]
+                    logits[:, token_id] = torch.where(
+                        logit > 0, logit / repetition_penalty, logit * repetition_penalty
+                    )
+ 
             if top_k is not None:
                 v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                 logits[logits < v[:, [-1]]] = float("-inf")
@@ -152,21 +155,21 @@ class GPT(nn.Module):
                 sorted_logits, sorted_idx = torch.sort(logits, descending=True, dim=-1)
                 sorted_probs = F.softmax(sorted_logits, dim=-1)
                 cum_probs = torch.cumsum(sorted_probs, dim=-1)
-
+ 
                 # Shift right so we always keep at least the top token.
                 sorted_mask = cum_probs > top_p
                 sorted_mask[:, 1:] = sorted_mask[:, :-1].clone()
                 sorted_mask[:, 0] = False
-
+ 
                 mask = torch.zeros_like(sorted_mask).scatter_(1, sorted_idx, sorted_mask)
                 logits = logits.masked_fill(mask, float("-inf"))
-
+ 
             probs = F.softmax(logits, dim=-1)
             idx_next = torch.multinomial(probs, num_samples=1)
             idx = torch.cat((idx, idx_next), dim=1)
         self.train()
         return idx
-
+ 
     def num_params(self):
         return sum(p.numel() for p in self.parameters())
 
