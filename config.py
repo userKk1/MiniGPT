@@ -71,13 +71,13 @@ class ModelConfig:
 class TrainConfig:
     batch_size: int = 32
     grad_accum_steps: int = 1
-    max_steps: int = 5000
+    max_steps: int = 10000
     eval_interval: int = 250
     eval_iters: int = 100
     learning_rate: float = 3e-4
     min_lr: float = 3e-5
     warmup_steps: int = 200
-    lr_decay_steps: int = 5000
+    lr_decay_steps: int = 10000
     weight_decay: float = 0.1
     grad_clip: float = 1.0
     device: str = "cuda"         # train.py falls back to "cpu" if unavailable
